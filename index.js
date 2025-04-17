@@ -10,10 +10,7 @@ if (process.env.GOOGLE_CREDENTIALS_B64 && process.env.GOOGLE_TOKEN_B64) {
 
 
 import express from 'express';
-import dotenv from 'dotenv';
 import { getAvailableSlots, bookSlot } from './calendarService.js';
-
-dotenv.config();
 
 const app = express();
 app.use(express.json());
