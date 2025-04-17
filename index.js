@@ -8,7 +8,7 @@ if (process.env.GOOGLE_CREDENTIALS_B64 && process.env.GOOGLE_TOKEN_B64) {
   fs.writeFileSync('token.json', Buffer.from(process.env.GOOGLE_TOKEN_B64, 'base64').toString());
 }
 
-
+import './bootstrap.js'; // esto reconstruye los archivos ANTES de calendarService
 import express from 'express';
 import { getAvailableSlots, bookSlot } from './calendarService.js';
 
