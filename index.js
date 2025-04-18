@@ -24,7 +24,7 @@ const startServer = async () => {
   // ✅ Importamos calendarService dinámicamente ahora que los archivos ya existen
   const { getAvailableSlots, bookSlot } = await import('./calendarService.js');
 
-  app.get('/available-slots', async (req, res) => {
+  app.post('/available-slots', async (req, res) => {
     const { date } = req.query;
     if (!date) return res.status(400).json({ error: 'Date is required' });
 
