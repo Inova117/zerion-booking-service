@@ -25,7 +25,7 @@ const startServer = async () => {
   const { getAvailableSlots, bookSlot } = await import('./calendarService.js');
 
   app.post('/available-slots', async (req, res) => {
-    const { date } = req.query;
+    const { date } = req.body;
     if (!date) return res.status(400).json({ error: 'Date is required' });
 
     try {
