@@ -36,6 +36,18 @@ const startServer = async () => {
     }
   });
 
+ app.get('/available-slots', async (req, res) => {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+
+    try {
+      const slots = await getAvailableSlots(date);
+      res.json({ available: slots });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/book-slot', async (req, res) => {
     try {
       const result = await bookSlot(req.body);
