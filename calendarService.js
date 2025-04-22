@@ -70,14 +70,21 @@ export async function getAvailableSlots(dateStr) {
 }
 
 export async function bookSlot({ name, email, date, time, service }) {
-  const start = dayjs(`${date}T${time}`);
-  const end = start.add(SLOT_DURATION, 'minute');
+  const timezone = 'America/Guayaquil';
+  const startDateTime = new Date(`${date}T${time}:00`);
+  const endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000); // evento de 30 minutos
 
   const event = {
     summary: `Reserva de ${name}`,
-    description: `Servicio solicitado: ${service}`,
-    start: { dateTime: start.toISOString() },
-    end: { dateTime: end.toISOString() },
+    description: `Servicio solicitado: ${service || "No especificado"}`,
+    start: {
+      dateTime: startDateTime.toISOString(),
+      timeZone: timezone,
+    },
+    end: {
+      dateTime: endDateTime.toISOString(),
+      timeZone: timezone,
+    },
     attendees: [{ email }]
   };
 
@@ -102,10 +109,15 @@ export async function bookSlot({ name, email, date, time, service }) {
         'Agendado',
         date,
         '', '', '', '',
-        `Solicitó: ${service}`
+        `Solicitó: ${service || "No especificado"}`
       ]]
     }
   });
+
+  console.log("✅ Evento creado con éxito:");
+  console.log("- Fecha y hora inicio:", startDateTime.toISOString());
+  console.log("- Fecha y hora fin:", endDateTime.toISOString());
+  console.log("- Zona horaria:", timezone);
 
   return {
     status: 'confirmed',

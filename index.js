@@ -381,26 +381,85 @@ const startServer = async () => {
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
       }
       
-      // Obtener los slots disponibles desde el calendar service
-      const slotsFromCalendar = await getAvailableSlots(date);
+      // 1. Consultar los eventos de Google Calendar del día completo
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
       
-      // Filtrar los slots que ya están reservados localmente
-      const slots = filtrarHorariosDisponibles(date, slotsFromCalendar);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
       
-      // Respuesta completa con múltiples formatos para compatibilidad
+      // Función auxiliar para verificar si un horario está ocupado
+      const isSlotTaken = (checkDate, checkTime) => {
+        // Verificar en las reservas locales
+        const reservasOcupadas = getReservas().filter(r => 
+          r.fecha === checkDate && r.hora === checkTime
+        );
+        
+        if (reservasOcupadas.length > 0) {
+          return true;
+        }
+        
+        // Verificar en los eventos del calendario
+        const timeToCheck = new Date(`${checkDate}T${checkTime}`);
+        return busyTimes.some(busy => {
+          const busyStart = new Date(busy.start);
+          const busyEnd = new Date(busy.end);
+          return timeToCheck >= busyStart && timeToCheck < busyEnd;
+        });
+      };
+      
+      // Obtener eventos desde Google Calendar
+      const calendarEvents = await calendar.events.list({
+        calendarId: CALENDAR_ID,
+        timeMin: startOfDay.toISOString(),
+        timeMax: endOfDay.toISOString(),
+        timeZone: 'America/Guayaquil',
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      // 2. Convertir eventos de Google a un formato estándar
+      const busyTimes = calendarEvents.data.items.map(event => ({
+        start: event.start.dateTime || `${date}T${event.start.date}T00:00:00`,
+        end: event.end.dateTime || `${date}T${event.end.date}T23:59:59`
+      }));
+      
+      // 3. Generar todos los slots posibles del día
+      const allSlots = [];
+      for (let hour = WORK_START; hour < WORK_END; hour++) {
+        for (let minute = 0; minute < 60; minute += SLOT_DURATION) {
+          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Verificar si es un horario pasado (para el día actual)
+          const slotDateTime = new Date(`${date}T${time}`);
+          const now = new Date();
+          
+          // Solo incluir horarios futuros o del pasado si no es hoy
+          if (slotDateTime > now || requestedDate.toDateString() !== today.toDateString()) {
+            allSlots.push({
+              date,
+              time,
+              value: `${date}T${time}`,
+              label: time
+            });
+          }
+        }
+      }
+      
+      // 5. Filtrar los slots ocupados
+      const availableSlots = allSlots.filter(slot => !isSlotTaken(slot.date, slot.time));
+      
+      // 6. Devolver los slots disponibles
       res.json({
-        // Versión original
-        available: slots,
-        // Nuevas versiones para compatibilidad
-        slots: slots,
-        // El array también está disponible en la raíz
-        data: slots,
-        // Información de diagnóstico
-        apiVersion: '1.1',
+        available: availableSlots,
+        slots: availableSlots,
+        data: availableSlots,
+        apiVersion: '1.2',
         timestamp: new Date().toISOString(),
         date: date
       });
     } catch (err) {
+      console.error("Error al obtener slots disponibles:", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -417,26 +476,85 @@ const startServer = async () => {
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
       }
       
-      // Obtener los slots disponibles desde el calendar service
-      const slotsFromCalendar = await getAvailableSlots(date);
+      // 1. Consultar los eventos de Google Calendar del día completo
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
       
-      // Filtrar los slots que ya están reservados localmente
-      const slots = filtrarHorariosDisponibles(date, slotsFromCalendar);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
       
-      // Respuesta completa con múltiples formatos para compatibilidad
+      // Función auxiliar para verificar si un horario está ocupado
+      const isSlotTaken = (checkDate, checkTime) => {
+        // Verificar en las reservas locales
+        const reservasOcupadas = getReservas().filter(r => 
+          r.fecha === checkDate && r.hora === checkTime
+        );
+        
+        if (reservasOcupadas.length > 0) {
+          return true;
+        }
+        
+        // Verificar en los eventos del calendario
+        const timeToCheck = new Date(`${checkDate}T${checkTime}`);
+        return busyTimes.some(busy => {
+          const busyStart = new Date(busy.start);
+          const busyEnd = new Date(busy.end);
+          return timeToCheck >= busyStart && timeToCheck < busyEnd;
+        });
+      };
+      
+      // Obtener eventos desde Google Calendar
+      const calendarEvents = await calendar.events.list({
+        calendarId: CALENDAR_ID,
+        timeMin: startOfDay.toISOString(),
+        timeMax: endOfDay.toISOString(),
+        timeZone: 'America/Guayaquil',
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      // 2. Convertir eventos de Google a un formato estándar
+      const busyTimes = calendarEvents.data.items.map(event => ({
+        start: event.start.dateTime || `${date}T${event.start.date}T00:00:00`,
+        end: event.end.dateTime || `${date}T${event.end.date}T23:59:59`
+      }));
+      
+      // 3. Generar todos los slots posibles del día
+      const allSlots = [];
+      for (let hour = WORK_START; hour < WORK_END; hour++) {
+        for (let minute = 0; minute < 60; minute += SLOT_DURATION) {
+          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Verificar si es un horario pasado (para el día actual)
+          const slotDateTime = new Date(`${date}T${time}`);
+          const now = new Date();
+          
+          // Solo incluir horarios futuros o del pasado si no es hoy
+          if (slotDateTime > now || requestedDate.toDateString() !== today.toDateString()) {
+            allSlots.push({
+              date,
+              time,
+              value: `${date}T${time}`,
+              label: time
+            });
+          }
+        }
+      }
+      
+      // 5. Filtrar los slots ocupados
+      const availableSlots = allSlots.filter(slot => !isSlotTaken(slot.date, slot.time));
+      
+      // 6. Devolver los slots disponibles
       res.json({
-        // Versión original
-        available: slots,
-        // Nuevas versiones para compatibilidad
-        slots: slots,
-        // El array también está disponible en la raíz
-        data: slots,
-        // Información de diagnóstico
-        apiVersion: '1.1',
+        available: availableSlots,
+        slots: availableSlots,
+        data: availableSlots,
+        apiVersion: '1.2',
         timestamp: new Date().toISOString(),
         date: date
       });
     } catch (err) {
+      console.error("Error al obtener slots disponibles:", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -452,9 +570,37 @@ const startServer = async () => {
       return res.status(400).json({ success: false, message: "Faltan datos para agendar la cita" });
     }
 
-    console.log("📆 Creando cita con:", { date, time, name, email, service });
+    // Validar formato de fecha y hora
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+      console.error("❌ Formato incorrecto de fecha o hora:", { date, time });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Formato incorrecto. Usa YYYY-MM-DD para fecha y HH:MM para hora" 
+      });
+    }
+    
+    // SEGURIDAD: Validar que no sea una fecha pasada
+    const selectedDateTime = new Date(`${date}T${time}:00`);
+    const now = new Date();
+    
+    if (selectedDateTime < now) {
+      console.error("❌ Intento de reserva en fecha pasada:", { date, time, selectedDateTime: selectedDateTime.toISOString(), now: now.toISOString() });
+      return res.status(400).json({ 
+        success: false, 
+        message: "No se puede reservar en fechas pasadas."
+      });
+    }
 
+    console.log("📆 Creando cita con:", { date, time, name, email, service });
+    
     try {
+      // Comprobación de diagnóstico para verificar la conversión correcta de la fecha y hora
+      const startDateTime = new Date(`${date}T${time}:00`);
+      console.log("🔍 Diagnóstico de datetime:");
+      console.log("- Fecha y hora originales:", date, time);
+      console.log("- Objeto Date:", startDateTime);
+      console.log("- ISO String:", startDateTime.toISOString());
+      
       const result = await bookSlot({ date, time, name, email, service });
       console.log("✅ Evento creado:", result);
       
