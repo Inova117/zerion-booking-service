@@ -427,83 +427,34 @@ const startServer = async () => {
 
   app.post('/book-slot', setSpecificCORS, async (req, res) => {
     console.log("📥 Petición recibida en /book-slot:");
-    console.log(req.body); // Esto mostrará el contenido del evento que se quiere agendar
-    console.log("✅ Procesando reserva...");
-    
-    // Validación de campos requeridos
-    if (!req.body.date || !req.body.time || !req.body.email || !req.body.name) {
-      console.error("❌ Faltan datos: ", req.body);
-      return res.status(400).json({ 
-        error: "Datos incompletos. Se requieren: date, time, email y name",
-        received: req.body
-      });
+    console.log("Body:", req.body);
+
+    const { date, time, name, email, service } = req.body;
+
+    if (!date || !time || !name || !email) {
+      console.error("❌ Faltan campos para crear el evento");
+      return res.status(400).json({ success: false, message: "Faltan datos para agendar la cita" });
     }
-    
+
+    console.log("📆 Creando cita con:", { date, time, name, email, service });
+
     try {
-      // Verificar si el horario ya está reservado localmente
-      const horariosReservados = getHorariosReservados(req.body.date);
-      if (horariosReservados.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} ya está reservado para la fecha ${req.body.date}`);
-        return res.status(409).json({
-          error: "Horario no disponible",
-          message: "Este horario ya ha sido reservado por otro usuario."
-        });
-      }
-      
-      // Obtener los horarios disponibles antes de la reserva
-      console.log("📋 Horarios disponibles ANTES de la reserva para la fecha" + req.body.date);
-      const availableSlotsBefore = await getAvailableSlots(req.body.date);
-      console.log(availableSlotsBefore);
-      
-      // Verificar si el horario está disponible en el calendario
-      if (!availableSlotsBefore.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} no está disponible en el calendario para la fecha ${req.body.date}`);
-        return res.status(409).json({
-          error: "Horario no disponible",
-          message: "Este horario no está disponible en el calendario."
-        });
-      }
-      
-      // Log antes de crear el evento en Google Calendar
-      console.log("📆 Creando evento en Google Calendar con:", {
-        date: req.body.date,
-        time: req.body.time,
-        name: req.body.name,
-        email: req.body.email,
-        service: req.body.service || 'Sin especificar'
-      });
-      
-      // Realizar la reserva en el calendario de Google
-      const result = await bookSlot(req.body);
-      
-      // Log después de crear el evento en Google Calendar
+      const result = await bookSlot({ date, time, name, email, service });
       console.log("✅ Evento creado:", result);
       
       // Guardar la reserva en el archivo local
       guardarReserva(req.body);
       
-      // Obtener los horarios disponibles después de la reserva
-      console.log("📋 Horarios disponibles DESPUÉS de la reserva para la fecha" + req.body.date);
-      const availableSlotsAfter = await getAvailableSlots(req.body.date);
-      console.log(availableSlotsAfter);
-      
-      // Verificar si el horario fue eliminado correctamente
-      const slotWasRemoved = !availableSlotsAfter.includes(req.body.time) && availableSlotsBefore.includes(req.body.time);
-      console.log(`🔍 El horario ${req.body.time} ${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}`);
-      
-      res.json({
-        ...result,
-        local: {
-          saved: true,
-          fecha: req.body.date,
-          hora: req.body.time
-        }
+      res.json({ 
+        success: true, 
+        status: "confirmed", 
+        event_link: result?.event_link || null 
       });
     } catch (err) {
-      console.error("❌ Error al crear el evento:", err);
+      console.error("❌ Error al agendar:", err);
       console.error("❌ Error detallado:", err.message);
       console.error("❌ Stack trace:", err.stack);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ success: false, message: "No se pudo agendar la cita" });
     }
   });
 
