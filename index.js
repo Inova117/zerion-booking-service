@@ -207,7 +207,7 @@ app.get('/frontend-debug', (req, res) => {
           // Probamos cada formato
           for (const format of formats) {
             try {
-              const response = await fetch(\`\${baseUrl}/format-test?format=\${format}\`);
+              const response = \`\${baseUrl}/format-test?format=\${format}\`);
               const data = await response.json();
               
               // Ahora intentamos procesar estos datos como lo haría el frontend
@@ -255,7 +255,7 @@ app.get('/frontend-debug', (req, res) => {
           
           // Ahora probemos la API real
           try {
-            const response = await fetch(\`\${baseUrl}/available-slots?date=2023-12-31\`);
+            const response = \`\${baseUrl}/available-slots?date=2023-12-31\`);
             const data = await response.json();
             
             results.innerHTML += \`
@@ -300,13 +300,13 @@ app.get('/cors-test', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       availableSlots: {
-        GET: `${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD`,
-        POST: `${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})`,
+        GET: \`\${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD\`,
+        POST: \`\${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})\`,
         info: "Si no se proporciona fecha, se usará la fecha actual",
         response: ["09:00", "10:00", "11:00", "..."]  // Ahora es un array directo
       },
       bookSlot: {
-        POST: `${req.protocol}://${req.get('host')}/book-slot`,
+        POST: \`\${req.protocol}://${req.get('host')}/book-slot\`,
         body: {
           date: "YYYY-MM-DD",
           time: "HH:MM",
@@ -338,13 +338,13 @@ app.all('/available-slots', (req, res, next) => {
     console.log('Petición GET sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const formattedDate = \`\${today.getFullYear()}-\${String(today.getMonth() + 1).padStart(2, '0')}-\${String(today.getDate()).padStart(2, '0')}\`;
     req.query.date = formattedDate;
   } else if ((req.method === 'POST' && (!req.body || !req.body.date))) {
     console.log('Petición POST sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const formattedDate = \`\${today.getFullYear()}-\${String(today.getMonth() + 1).padStart(2, '0')}-\${String(today.getDate()).padStart(2, '0')}\`;
     if (!req.body) req.body = {};
     req.body.date = formattedDate;
   }
@@ -430,10 +430,10 @@ const startServer = async () => {
     console.log("✅ Procesando reserva...");
     
     // Validación de campos requeridos
-    if (!req.body.date || !req.body.time || !req.body.email) {
+    if (!req.body.date || !req.body.time || !req.body.email || !req.body.name) {
       console.error("❌ Faltan datos: ", req.body);
       return res.status(400).json({ 
-        error: "Datos incompletos. Se requieren: date, time y email",
+        error: "Datos incompletos. Se requieren: date, time, email y name",
         received: req.body
       });
     }
@@ -442,7 +442,7 @@ const startServer = async () => {
       // Verificar si el horario ya está reservado localmente
       const horariosReservados = getHorariosReservados(req.body.date);
       if (horariosReservados.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} ya está reservado para la fecha ${req.body.date}`);
+        console.error(\`❌ El horario \${req.body.time} ya está reservado para la fecha \${req.body.date}\`);
         return res.status(409).json({
           error: "Horario no disponible",
           message: "Este horario ya ha sido reservado por otro usuario."
@@ -450,13 +450,13 @@ const startServer = async () => {
       }
       
       // Obtener los horarios disponibles antes de la reserva
-      console.log("📋 Horarios disponibles ANTES de la reserva para la fecha", req.body.date);
+      console.log("📋 Horarios disponibles ANTES de la reserva para la fecha" + req.body.date);
       const availableSlotsBefore = await getAvailableSlots(req.body.date);
       console.log(availableSlotsBefore);
       
       // Verificar si el horario está disponible en el calendario
       if (!availableSlotsBefore.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} no está disponible en el calendario para la fecha ${req.body.date}`);
+        console.error(\`❌ El horario \${req.body.time} no está disponible en el calendario para la fecha \${req.body.date}\`);
         return res.status(409).json({
           error: "Horario no disponible",
           message: "Este horario no está disponible en el calendario."
@@ -470,13 +470,13 @@ const startServer = async () => {
       guardarReserva(req.body);
       
       // Obtener los horarios disponibles después de la reserva
-      console.log("📋 Horarios disponibles DESPUÉS de la reserva para la fecha", req.body.date);
+      console.log("📋 Horarios disponibles DESPUÉS de la reserva para la fecha" + req.body.date);
       const availableSlotsAfter = await getAvailableSlots(req.body.date);
       console.log(availableSlotsAfter);
       
       // Verificar si el horario fue eliminado correctamente
       const slotWasRemoved = !availableSlotsAfter.includes(req.body.time) && availableSlotsBefore.includes(req.body.time);
-      console.log(`🔍 El horario ${req.body.time} ${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}`);
+      console.log(\`🔍 El horario \${req.body.time} \${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}\`);
       
       res.json({
         ...result,
@@ -521,7 +521,7 @@ const startServer = async () => {
         </head>
         <body>
           <h1>Administrador de Reservas</h1>
-          <p>Total de reservas: ${reservas.length}</p>
+          <p>Total de reservas: \${reservas.length}</p>
           
           <table>
             <tr>
@@ -532,21 +532,21 @@ const startServer = async () => {
               <th>Servicio</th>
               <th>Creado</th>
             </tr>
-            ${reservas.map((r, i) => `
+            \${reservas.map((r, i) => \`
               <tr>
-                <td>${r.fecha}</td>
-                <td>${r.hora}</td>
-                <td>${r.email}</td>
-                <td>${r.nombre}</td>
-                <td>${r.servicio}</td>
-                <td>${r.createdAt}</td>
+                <td>\${r.fecha}</td>
+                <td>\${r.hora}</td>
+                <td>\${r.email}</td>
+                <td>\${r.nombre}</td>
+                <td>\${r.servicio}</td>
+                <td>\${r.createdAt}</td>
               </tr>
-            `).join('')}
+            \`).join('')}
           </table>
           
           <hr />
           <h2>Respaldo</h2>
-          <pre>${JSON.stringify(reservas, null, 2)}</pre>
+          <pre>\${JSON.stringify(reservas, null, 2)}</pre>
         </body>
         </html>
       `);
@@ -555,7 +555,20 @@ const startServer = async () => {
     }
   });
 
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  // Endpoint simplificado solo para pruebas del frontend
+  app.post('/test-book-slot', setSpecificCORS, (req, res) => {
+    console.log("📥 Petición de prueba recibida en /test-book-slot:");
+    console.log(req.body); // Verás el contenido del evento
+
+    // Solo para test, responde algo simple
+    res.status(200).json({ 
+      message: "Reserva recibida correctamente", 
+      success: true,
+      data: req.body
+    });
+  });
+
+  app.listen(PORT, () => console.log(\`🚀 Server running on port \${PORT}\`));
 };
 
 startServer();
