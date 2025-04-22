@@ -63,6 +63,165 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
+// Endpoint de debugging para probar diferentes formatos de respuesta
+app.get('/format-test', (req, res) => {
+  const slots = ["09:00", "10:00", "11:00", "12:00"];
+  
+  // Generamos varios formatos posibles para que el frontend pruebe
+  const formats = {
+    directArray: slots,
+    withAvailableKey: { available: slots },
+    withSlotsKey: { slots: slots },
+    withDataKey: { data: slots },
+    withResultsKey: { results: slots },
+    multiFormat: {
+      available: slots,
+      slots: slots,
+      data: slots,
+      results: slots
+    },
+    emptyObject: {},
+    nullValue: null,
+    emptyArray: [],
+    singleSlot: ["09:00"],
+    stringValue: "09:00,10:00,11:00,12:00",
+    booleanValue: true,
+    withMetadata: {
+      available: slots,
+      metadata: {
+        date: "2023-12-31",
+        timezone: "UTC"
+      }
+    }
+  };
+  
+  // Devolvemos el formato especificado o todos si no se especifica
+  const format = req.query.format;
+  if (format && formats[format]) {
+    res.json(formats[format]);
+  } else {
+    res.json(formats);
+  }
+});
+
+// Para probar con curl:
+// curl -H "Origin: https://zerionstudio.com" https://zerion-booking-service-production.up.railway.app/format-test?format=directArray
+
+// Endpoint para diagnóstico del frontend
+app.get('/frontend-debug', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Frontend Debug</title>
+      <script>
+        // Función para probar todos los formatos
+        async function testAllFormats() {
+          const baseUrl = "${req.protocol}://${req.get('host')}";
+          const results = document.getElementById('results');
+          results.innerHTML = '';
+          
+          // Lista de formatos para probar
+          const formats = [
+            'directArray',
+            'withAvailableKey',
+            'withSlotsKey',
+            'withDataKey',
+            'withResultsKey',
+            'multiFormat',
+            'emptyObject',
+            'nullValue',
+            'emptyArray',
+            'singleSlot',
+            'stringValue',
+            'booleanValue',
+            'withMetadata'
+          ];
+          
+          // Probamos cada formato
+          for (const format of formats) {
+            try {
+              const response = await fetch(\`\${baseUrl}/format-test?format=\${format}\`);
+              const data = await response.json();
+              
+              // Ahora intentamos procesar estos datos como lo haría el frontend
+              let result = '';
+              try {
+                // Simulamos el procesamiento del frontend
+                if (Array.isArray(data)) {
+                  result = "✅ OK - Es un array directo con " + data.length + " elementos";
+                } else if (data && typeof data === 'object') {
+                  if (data.available && Array.isArray(data.available)) {
+                    result = "✅ OK - Tiene propiedad 'available' con " + data.available.length + " elementos";
+                  } else if (data.slots && Array.isArray(data.slots)) {
+                    result = "✅ OK - Tiene propiedad 'slots' con " + data.slots.length + " elementos";
+                  } else if (data.data && Array.isArray(data.data)) {
+                    result = "✅ OK - Tiene propiedad 'data' con " + data.data.length + " elementos";
+                  } else if (data.results && Array.isArray(data.results)) {
+                    result = "✅ OK - Tiene propiedad 'results' con " + data.results.length + " elementos";
+                  } else {
+                    result = "❌ ERROR - No tiene una propiedad reconocible con un array";
+                  }
+                } else {
+                  result = "❌ ERROR - No es un array ni un objeto";
+                }
+              } catch (procError) {
+                result = "❌ ERROR al procesar: " + procError.message;
+              }
+              
+              results.innerHTML += \`
+                <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc;">
+                  <h3>Formato: \${format}</h3>
+                  <p><strong>Resultado:</strong> \${result}</p>
+                  <p><strong>Datos:</strong></p>
+                  <pre>\${JSON.stringify(data, null, 2)}</pre>
+                </div>
+              \`;
+            } catch (error) {
+              results.innerHTML += \`
+                <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #f00; background: #fee;">
+                  <h3>Formato: \${format}</h3>
+                  <p><strong>Error:</strong> \${error.message}</p>
+                </div>
+              \`;
+            }
+          }
+          
+          // Ahora probemos la API real
+          try {
+            const response = await fetch(\`\${baseUrl}/available-slots?date=2023-12-31\`);
+            const data = await response.json();
+            
+            results.innerHTML += \`
+              <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #00f; background: #eef;">
+                <h3>API Real: /available-slots</h3>
+                <p><strong>Datos:</strong></p>
+                <pre>\${JSON.stringify(data, null, 2)}</pre>
+              </div>
+            \`;
+          } catch (error) {
+            results.innerHTML += \`
+              <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #f00; background: #fee;">
+                <h3>API Real: /available-slots</h3>
+                <p><strong>Error:</strong> \${error.message}</p>
+              </div>
+            \`;
+          }
+        }
+      </script>
+    </head>
+    <body>
+      <h1>Diagnóstico del Frontend</h1>
+      <p>Esta herramienta te ayudará a diagnosticar problemas con el formato de respuesta de la API.</p>
+      
+      <button onclick="testAllFormats()">Probar Todos los Formatos</button>
+      
+      <div id="results" style="margin-top: 20px;"></div>
+    </body>
+    </html>
+  `);
+});
+
 // Endpoint específico para diagnóstico de CORS
 app.get('/cors-test', (req, res) => {
   const origin = req.headers.origin || 'No origin provided';
@@ -78,9 +237,7 @@ app.get('/cors-test', (req, res) => {
         GET: `${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD`,
         POST: `${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})`,
         info: "Si no se proporciona fecha, se usará la fecha actual",
-        response: {
-          slots: ["09:00", "10:00", "11:00", "..."]  // Ejemplo del formato de respuesta actualizado
-        }
+        response: ["09:00", "10:00", "11:00", "..."]  // Ahora es un array directo
       },
       bookSlot: {
         POST: `${req.protocol}://${req.get('host')}/book-slot`,
@@ -145,23 +302,47 @@ const startServer = async () => {
   };
 
   // Rutas para available-slots con CORS específico
-  app.post('/available-slots', setSpecificCORS, async (req, res) => {
-    const { date } = req.body;
-    
-    try {
-      const slots = await getAvailableSlots(date);
-      res.json({ slots: slots });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   app.get('/available-slots', setSpecificCORS, async (req, res) => {
     const { date } = req.query;
     
     try {
       const slots = await getAvailableSlots(date);
-      res.json({ slots: slots });
+      // Respuesta completa con múltiples formatos para compatibilidad
+      res.json({
+        // Versión original
+        available: slots,
+        // Nuevas versiones para compatibilidad
+        slots: slots,
+        // El array también está disponible en la raíz
+        data: slots,
+        // Información de diagnóstico
+        apiVersion: '1.1',
+        timestamp: new Date().toISOString(),
+        date: date
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/available-slots', setSpecificCORS, async (req, res) => {
+    const { date } = req.body;
+    
+    try {
+      const slots = await getAvailableSlots(date);
+      // Respuesta completa con múltiples formatos para compatibilidad
+      res.json({
+        // Versión original
+        available: slots,
+        // Nuevas versiones para compatibilidad
+        slots: slots,
+        // El array también está disponible en la raíz
+        data: slots,
+        // Información de diagnóstico
+        apiVersion: '1.1',
+        timestamp: new Date().toISOString(),
+        date: date
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
