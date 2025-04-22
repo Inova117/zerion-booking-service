@@ -65,10 +65,31 @@ const PORT = process.env.PORT || 3000;
 
 // Endpoint específico para diagnóstico de CORS
 app.get('/cors-test', (req, res) => {
+  const origin = req.headers.origin || 'No origin provided';
+  
   res.json({
     message: 'CORS está configurado correctamente si puedes ver este mensaje',
-    origin: req.headers.origin || 'No origin provided',
-    timestamp: new Date().toISOString()
+    origin: origin,
+    corsEnabled: true,
+    allowedOrigins: allowedOrigins,
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      availableSlots: {
+        GET: `${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD`,
+        POST: `${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})`,
+        info: "Si no se proporciona fecha, se usará la fecha actual"
+      },
+      bookSlot: {
+        POST: `${req.protocol}://${req.get('host')}/book-slot`,
+        body: {
+          date: "YYYY-MM-DD",
+          time: "HH:MM",
+          name: "Nombre del cliente",
+          email: "email@example.com",
+          service: "Nombre del servicio"
+        }
+      }
+    }
   });
 });
 
@@ -86,16 +107,23 @@ app.all('/available-slots', (req, res, next) => {
     return res.sendStatus(204);
   }
   
-  // Si no hay parámetro date, responder con error pero con CORS configurado
-  if ((req.method === 'GET' && !req.query.date) || (req.method === 'POST' && (!req.body || !req.body.date))) {
-    console.log('Petición sin fecha interceptada y respondida con CORS');
-    return res.status(400).json({ 
-      error: 'Date is required', 
-      example: req.method === 'GET' ? '/available-slots?date=2023-12-31' : 'POST body should include {date: "2023-12-31"}'
-    });
+  // Si no hay parámetro date, usar la fecha actual
+  if ((req.method === 'GET' && !req.query.date)) {
+    console.log('Petición GET sin fecha: usando la fecha actual como valor predeterminado');
+    // Formatear la fecha actual como YYYY-MM-DD
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    req.query.date = formattedDate;
+  } else if ((req.method === 'POST' && (!req.body || !req.body.date))) {
+    console.log('Petición POST sin fecha: usando la fecha actual como valor predeterminado');
+    // Formatear la fecha actual como YYYY-MM-DD
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (!req.body) req.body = {};
+    req.body.date = formattedDate;
   }
   
-  // Si llegamos aquí, continuar con las rutas específicas
+  // Continuar con las rutas específicas
   next();
 });
 
@@ -116,8 +144,7 @@ const startServer = async () => {
   // Rutas para available-slots con CORS específico
   app.post('/available-slots', setSpecificCORS, async (req, res) => {
     const { date } = req.body;
-    if (!date) return res.status(400).json({ error: 'Date is required' });
-
+    
     try {
       const slots = await getAvailableSlots(date);
       res.json({ available: slots });
@@ -128,11 +155,7 @@ const startServer = async () => {
 
   app.get('/available-slots', setSpecificCORS, async (req, res) => {
     const { date } = req.query;
-    if (!date) {
-      console.log('Falta el parámetro date en la solicitud GET');
-      return res.status(400).json({ error: 'Date is required', example: '/available-slots?date=2023-12-31' });
-    }
-
+    
     try {
       const slots = await getAvailableSlots(date);
       res.json({ available: slots });
