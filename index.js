@@ -26,17 +26,16 @@ const startServer = async () => {
   const { getAvailableSlots, bookSlot } = await import('./calendarService.js');
 
   // Configuración de CORS antes de definir las rutas
-  const allowedOrigins = ['https://zerionstudio.com'];
-  
+  const allowedOrigins = ['https://zerionstudio.com', 'http://localhost:8081'];
   app.use(cors({
     origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error('No permitido por CORS'));
       }
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
 
