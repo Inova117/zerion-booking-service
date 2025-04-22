@@ -695,6 +695,14 @@ const startServer = async () => {
     });
   });
 
+  // Endpoint para obtener la fecha actual del servidor
+  app.get("/today", setSpecificCORS, (req, res) => {
+    const today = new Date();
+    const formatted = today.toISOString().split("T")[0]; // YYYY-MM-DD
+    console.log(`📆 Solicitud de fecha actual, respondiendo: ${formatted}`);
+    res.json({ today: formatted });
+  });
+
   app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 };
 
