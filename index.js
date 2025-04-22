@@ -1,6 +1,7 @@
 import fs from 'fs';
 import dotenv from 'dotenv';
 import express from 'express';
+import cors from 'cors';
 
 dotenv.config();
 
@@ -23,6 +24,21 @@ const PORT = process.env.PORT || 3000;
 const startServer = async () => {
   // ✅ Importamos calendarService dinámicamente ahora que los archivos ya existen
   const { getAvailableSlots, bookSlot } = await import('./calendarService.js');
+
+  // Configuración de CORS antes de definir las rutas
+  const allowedOrigins = ['https://zerionstudio.com'];
+  
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
 
   app.post('/available-slots', async (req, res) => {
     const { date } = req.body;
