@@ -15,6 +15,72 @@ function restoreFile(filename, encoded) {
 restoreFile('credentials.json', 'GOOGLE_CREDENTIALS_B64');
 restoreFile('token.json', 'GOOGLE_TOKEN_B64');
 
+// Funciones para manejar las reservas persistentes
+function getReservas() {
+  try {
+    if (!fs.existsSync('reservas.json')) {
+      fs.writeFileSync('reservas.json', JSON.stringify([]));
+      return [];
+    }
+    const reservasData = fs.readFileSync('reservas.json', 'utf8');
+    return JSON.parse(reservasData);
+  } catch (error) {
+    console.error('Error al leer reservas.json:', error);
+    return [];
+  }
+}
+
+function guardarReserva(reserva) {
+  try {
+    const reservas = getReservas();
+    
+    // Agregar la nueva reserva
+    reservas.push({
+      fecha: reserva.date,
+      hora: reserva.time,
+      email: reserva.email,
+      nombre: reserva.name || 'Sin nombre',
+      servicio: reserva.service || 'Sin especificar',
+      createdAt: new Date().toISOString()
+    });
+    
+    // Guardar el archivo actualizado
+    fs.writeFileSync('reservas.json', JSON.stringify(reservas, null, 2));
+    console.log(`💾 Reserva guardada en reservas.json: ${reserva.date} ${reserva.time}`);
+    return true;
+  } catch (error) {
+    console.error('Error al guardar en reservas.json:', error);
+    return false;
+  }
+}
+
+function getHorariosReservados(fecha) {
+  try {
+    const reservas = getReservas();
+    const horariosReservados = reservas
+      .filter(r => r.fecha === fecha)
+      .map(r => r.hora);
+    
+    console.log(`🔍 Para la fecha ${fecha} hay ${horariosReservados.length} horarios ya reservados:`, horariosReservados);
+    return horariosReservados;
+  } catch (error) {
+    console.error('Error al obtener horarios reservados:', error);
+    return [];
+  }
+}
+
+function filtrarHorariosDisponibles(fecha, horarios) {
+  const horariosReservados = getHorariosReservados(fecha);
+  const horariosDisponibles = horarios.filter(hora => !horariosReservados.includes(hora));
+  
+  console.log(`📅 Después de filtrar horarios reservados para ${fecha}:`);
+  console.log(`- Total horarios originales: ${horarios.length}`);
+  console.log(`- Horarios reservados: ${horariosReservados.length}`);
+  console.log(`- Horarios disponibles: ${horariosDisponibles.length}`);
+  
+  return horariosDisponibles;
+}
+
 // ✅ Inicializar express y rutas después de que los archivos existan
 const app = express();
 app.use(express.json());
@@ -306,7 +372,12 @@ const startServer = async () => {
     const { date } = req.query;
     
     try {
-      const slots = await getAvailableSlots(date);
+      // Obtener los slots disponibles desde el calendar service
+      const slotsFromCalendar = await getAvailableSlots(date);
+      
+      // Filtrar los slots que ya están reservados localmente
+      const slots = filtrarHorariosDisponibles(date, slotsFromCalendar);
+      
       // Respuesta completa con múltiples formatos para compatibilidad
       res.json({
         // Versión original
@@ -329,7 +400,12 @@ const startServer = async () => {
     const { date } = req.body;
     
     try {
-      const slots = await getAvailableSlots(date);
+      // Obtener los slots disponibles desde el calendar service
+      const slotsFromCalendar = await getAvailableSlots(date);
+      
+      // Filtrar los slots que ya están reservados localmente
+      const slots = filtrarHorariosDisponibles(date, slotsFromCalendar);
+      
       // Respuesta completa con múltiples formatos para compatibilidad
       res.json({
         // Versión original
@@ -349,9 +425,131 @@ const startServer = async () => {
   });
 
   app.post('/book-slot', setSpecificCORS, async (req, res) => {
+    console.log("📥 Petición recibida en /book-slot:");
+    console.log(req.body); // Esto mostrará el contenido del evento que se quiere agendar
+    console.log("✅ Procesando reserva...");
+    
+    // Validación de campos requeridos
+    if (!req.body.date || !req.body.time || !req.body.email) {
+      console.error("❌ Faltan datos: ", req.body);
+      return res.status(400).json({ 
+        error: "Datos incompletos. Se requieren: date, time y email",
+        received: req.body
+      });
+    }
+    
     try {
+      // Verificar si el horario ya está reservado localmente
+      const horariosReservados = getHorariosReservados(req.body.date);
+      if (horariosReservados.includes(req.body.time)) {
+        console.error(`❌ El horario ${req.body.time} ya está reservado para la fecha ${req.body.date}`);
+        return res.status(409).json({
+          error: "Horario no disponible",
+          message: "Este horario ya ha sido reservado por otro usuario."
+        });
+      }
+      
+      // Obtener los horarios disponibles antes de la reserva
+      console.log("📋 Horarios disponibles ANTES de la reserva para la fecha", req.body.date);
+      const availableSlotsBefore = await getAvailableSlots(req.body.date);
+      console.log(availableSlotsBefore);
+      
+      // Verificar si el horario está disponible en el calendario
+      if (!availableSlotsBefore.includes(req.body.time)) {
+        console.error(`❌ El horario ${req.body.time} no está disponible en el calendario para la fecha ${req.body.date}`);
+        return res.status(409).json({
+          error: "Horario no disponible",
+          message: "Este horario no está disponible en el calendario."
+        });
+      }
+      
+      // Realizar la reserva en el calendario de Google
       const result = await bookSlot(req.body);
-      res.json(result);
+      
+      // Guardar la reserva en el archivo local
+      guardarReserva(req.body);
+      
+      // Obtener los horarios disponibles después de la reserva
+      console.log("📋 Horarios disponibles DESPUÉS de la reserva para la fecha", req.body.date);
+      const availableSlotsAfter = await getAvailableSlots(req.body.date);
+      console.log(availableSlotsAfter);
+      
+      // Verificar si el horario fue eliminado correctamente
+      const slotWasRemoved = !availableSlotsAfter.includes(req.body.time) && availableSlotsBefore.includes(req.body.time);
+      console.log(`🔍 El horario ${req.body.time} ${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}`);
+      
+      res.json({
+        ...result,
+        local: {
+          saved: true,
+          fecha: req.body.date,
+          hora: req.body.time
+        }
+      });
+    } catch (err) {
+      console.error("❌ Error al procesar la reserva:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Endpoint para ver las reservas guardadas (con protección básica)
+  app.get('/admin/reservas', async (req, res) => {
+    // Una protección básica con una clave en la URL
+    const { key } = req.query;
+    if (key !== 'zerion2024') {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+    
+    try {
+      const reservas = getReservas();
+      
+      // HTML básico para mostrar las reservas
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Administrador de Reservas</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #333; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+            .actions { display: flex; gap: 10px; }
+            button { cursor: pointer; padding: 5px 10px; }
+          </style>
+        </head>
+        <body>
+          <h1>Administrador de Reservas</h1>
+          <p>Total de reservas: ${reservas.length}</p>
+          
+          <table>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Email</th>
+              <th>Nombre</th>
+              <th>Servicio</th>
+              <th>Creado</th>
+            </tr>
+            ${reservas.map((r, i) => `
+              <tr>
+                <td>${r.fecha}</td>
+                <td>${r.hora}</td>
+                <td>${r.email}</td>
+                <td>${r.nombre}</td>
+                <td>${r.servicio}</td>
+                <td>${r.createdAt}</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <hr />
+          <h2>Respaldo</h2>
+          <pre>${JSON.stringify(reservas, null, 2)}</pre>
+        </body>
+        </html>
+      `);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
