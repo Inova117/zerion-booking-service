@@ -175,118 +175,117 @@ app.get('/format-test', (req, res) => {
 
 // Endpoint para diagnóstico del frontend
 app.get('/frontend-debug', (req, res) => {
-  res.send(
-    `<!DOCTYPE html>
-     <html>
-     <head>
-       <title>Frontend Debug</title>
-       <script>
-         // Función para probar todos los formatos
-         async function testAllFormats() {
-           const baseUrl = "${req.protocol}://${req.get('host')}";
-           const results = document.getElementById('results');
-           results.innerHTML = '';
-           
-           // Lista de formatos para probar
-           const formats = [
-             'directArray',
-             'withAvailableKey',
-             'withSlotsKey',
-             'withDataKey',
-             'withResultsKey',
-             'multiFormat',
-             'emptyObject',
-             'nullValue',
-             'emptyArray',
-             'singleSlot',
-             'stringValue',
-             'booleanValue',
-             'withMetadata'
-           ];
-           
-           // Probamos cada formato
-           for (const format of formats) {
-             try {
-               const response = \`\${baseUrl}/format-test?format=\${format}\`);
-               const data = await response.json();
-               
-               // Ahora intentamos procesar estos datos como lo haría el frontend
-               let result = '';
-               try {
-                 // Simulamos el procesamiento del frontend
-                 if (Array.isArray(data)) {
-                   result = "✅ OK - Es un array directo con " + data.length + " elementos";
-                 } else if (data && typeof data === 'object') {
-                   if (data.available && Array.isArray(data.available)) {
-                     result = "✅ OK - Tiene propiedad 'available' con " + data.available.length + " elementos";
-                   } else if (data.slots && Array.isArray(data.slots)) {
-                     result = "✅ OK - Tiene propiedad 'slots' con " + data.slots.length + " elementos";
-                   } else if (data.data && Array.isArray(data.data)) {
-                     result = "✅ OK - Tiene propiedad 'data' con " + data.data.length + " elementos";
-                   } else if (data.results && Array.isArray(data.results)) {
-                     result = "✅ OK - Tiene propiedad 'results' con " + data.results.length + " elementos";
-                   } else {
-                     result = "❌ ERROR - No tiene una propiedad reconocible con un array";
-                   }
-                 } else {
-                   result = "❌ ERROR - No es un array ni un objeto";
-                 }
-               } catch (procError) {
-                 result = "❌ ERROR al procesar: " + procError.message;
-               }
-               
-               results.innerHTML += \`
-                 <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc;">
-                   <h3>Formato: \${format}</h3>
-                   <p><strong>Resultado:</strong> \${result}</p>
-                   <p><strong>Datos:</strong></p>
-                   <pre>\${JSON.stringify(data, null, 2)}</pre>
-                 </div>
-               \`;
-             } catch (error) {
-               results.innerHTML += \`
-                 <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #f00; background: #fee;">
-                   <h3>Formato: \${format}</h3>
-                   <p><strong>Error:</strong> \${error.message}</p>
-                 </div>
-               \`;
-             }
-           }
-           
-           // Ahora probemos la API real
-           try {
-             const response = \`\${baseUrl}/available-slots?date=2023-12-31\`);
-             const data = await response.json();
-             
-             results.innerHTML += \`
-               <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #00f; background: #eef;">
-                 <h3>API Real: /available-slots</h3>
-                 <p><strong>Datos:</strong></p>
-                 <pre>\${JSON.stringify(data, null, 2)}</pre>
-               </div>
-             \`;
-           } catch (error) {
-             results.innerHTML += \`
-               <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #f00; background: #fee;">
-                 <h3>API Real: /available-slots</h3>
-                 <p><strong>Error:</strong> \${error.message}</p>
-               </div>
-             \`;
-           }
-         }
-       </script>
-     </head>
-     <body>
-       <h1>Diagnóstico del Frontend</h1>
-       <p>Esta herramienta te ayudará a diagnosticar problemas con el formato de respuesta de la API.</p>
-       
-       <button onclick="testAllFormats()">Probar Todos los Formatos</button>
-       
-       <div id="results" style="margin-top: 20px;"></div>
-     </body>
-     </html>
-   `
-  );
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Frontend Debug</title>
+      <script>
+        // Función para probar todos los formatos
+        async function testAllFormats() {
+          const baseUrl = "${req.protocol}://${req.get('host')}";
+          const results = document.getElementById('results');
+          results.innerHTML = '';
+          
+          // Lista de formatos para probar
+          const formats = [
+            'directArray',
+            'withAvailableKey',
+            'withSlotsKey',
+            'withDataKey',
+            'withResultsKey',
+            'multiFormat',
+            'emptyObject',
+            'nullValue',
+            'emptyArray',
+            'singleSlot',
+            'stringValue',
+            'booleanValue',
+            'withMetadata'
+          ];
+          
+          // Probamos cada formato
+          for (const format of formats) {
+            try {
+              const response = \`\${baseUrl}/format-test?format=\${format}\`);
+              const data = await response.json();
+              
+              // Ahora intentamos procesar estos datos como lo haría el frontend
+              let result = '';
+              try {
+                // Simulamos el procesamiento del frontend
+                if (Array.isArray(data)) {
+                  result = "✅ OK - Es un array directo con " + data.length + " elementos";
+                } else if (data && typeof data === 'object') {
+                  if (data.available && Array.isArray(data.available)) {
+                    result = "✅ OK - Tiene propiedad 'available' con " + data.available.length + " elementos";
+                  } else if (data.slots && Array.isArray(data.slots)) {
+                    result = "✅ OK - Tiene propiedad 'slots' con " + data.slots.length + " elementos";
+                  } else if (data.data && Array.isArray(data.data)) {
+                    result = "✅ OK - Tiene propiedad 'data' con " + data.data.length + " elementos";
+                  } else if (data.results && Array.isArray(data.results)) {
+                    result = "✅ OK - Tiene propiedad 'results' con " + data.results.length + " elementos";
+                  } else {
+                    result = "❌ ERROR - No tiene una propiedad reconocible con un array";
+                  }
+                } else {
+                  result = "❌ ERROR - No es un array ni un objeto";
+                }
+              } catch (procError) {
+                result = "❌ ERROR al procesar: " + procError.message;
+              }
+              
+              results.innerHTML += \`
+                <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ccc;">
+                  <h3>Formato: \${format}</h3>
+                  <p><strong>Resultado:</strong> \${result}</p>
+                  <p><strong>Datos:</strong></p>
+                  <pre>\${JSON.stringify(data, null, 2)}</pre>
+                </div>
+              \`;
+            } catch (error) {
+              results.innerHTML += \`
+                <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #f00; background: #fee;">
+                  <h3>Formato: \${format}</h3>
+                  <p><strong>Error:</strong> \${error.message}</p>
+                </div>
+              \`;
+            }
+          }
+          
+          // Ahora probemos la API real
+          try {
+            const response = \`\${baseUrl}/available-slots?date=2023-12-31\`);
+            const data = await response.json();
+            
+            results.innerHTML += \`
+              <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #00f; background: #eef;">
+                <h3>API Real: /available-slots</h3>
+                <p><strong>Datos:</strong></p>
+                <pre>\${JSON.stringify(data, null, 2)}</pre>
+              </div>
+            \`;
+          } catch (error) {
+            results.innerHTML += \`
+              <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #f00; background: #fee;">
+                <h3>API Real: /available-slots</h3>
+                <p><strong>Error:</strong> \${error.message}</p>
+              </div>
+            \`;
+          }
+        }
+      </script>
+    </head>
+    <body>
+      <h1>Diagnóstico del Frontend</h1>
+      <p>Esta herramienta te ayudará a diagnosticar problemas con el formato de respuesta de la API.</p>
+      
+      <button onclick="testAllFormats()">Probar Todos los Formatos</button>
+      
+      <div id="results" style="margin-top: 20px;"></div>
+    </body>
+    </html>
+  `);
 });
 
 // Endpoint específico para diagnóstico de CORS
@@ -301,13 +300,13 @@ app.get('/cors-test', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       availableSlots: {
-        GET: `${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD`,
-        POST: `${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})`,
+        GET: \`\${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD\`,
+        POST: \`\${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})\`,
         info: "Si no se proporciona fecha, se usará la fecha actual",
         response: ["09:00", "10:00", "11:00", "..."]  // Ahora es un array directo
       },
       bookSlot: {
-        POST: `${req.protocol}://${req.get('host')}/book-slot`,
+        POST: \`\${req.protocol}://${req.get('host')}/book-slot\`,
         body: {
           date: "YYYY-MM-DD",
           time: "HH:MM",
@@ -339,13 +338,13 @@ app.all('/available-slots', (req, res, next) => {
     console.log('Petición GET sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const formattedDate = \`\${today.getFullYear()}-\${String(today.getMonth() + 1).padStart(2, '0')}-\${String(today.getDate()).padStart(2, '0')}\`;
     req.query.date = formattedDate;
   } else if ((req.method === 'POST' && (!req.body || !req.body.date))) {
     console.log('Petición POST sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const formattedDate = \`\${today.getFullYear()}-\${String(today.getMonth() + 1).padStart(2, '0')}-\${String(today.getDate()).padStart(2, '0')}\`;
     if (!req.body) req.body = {};
     req.body.date = formattedDate;
   }
@@ -443,7 +442,7 @@ const startServer = async () => {
       // Verificar si el horario ya está reservado localmente
       const horariosReservados = getHorariosReservados(req.body.date);
       if (horariosReservados.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} ya está reservado para la fecha ${req.body.date}`);
+        console.error(\`❌ El horario \${req.body.time} ya está reservado para la fecha \${req.body.date}\`);
         return res.status(409).json({
           error: "Horario no disponible",
           message: "Este horario ya ha sido reservado por otro usuario."
@@ -457,7 +456,7 @@ const startServer = async () => {
       
       // Verificar si el horario está disponible en el calendario
       if (!availableSlotsBefore.includes(req.body.time)) {
-        console.error(`❌ El horario ${req.body.time} no está disponible en el calendario para la fecha ${req.body.date}`);
+        console.error(\`❌ El horario \${req.body.time} no está disponible en el calendario para la fecha \${req.body.date}\`);
         return res.status(409).json({
           error: "Horario no disponible",
           message: "Este horario no está disponible en el calendario."
@@ -477,7 +476,7 @@ const startServer = async () => {
       
       // Verificar si el horario fue eliminado correctamente
       const slotWasRemoved = !availableSlotsAfter.includes(req.body.time) && availableSlotsBefore.includes(req.body.time);
-      console.log(`🔍 El horario ${req.body.time} ${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}`);
+      console.log(\`🔍 El horario \${req.body.time} \${slotWasRemoved ? "fue eliminado correctamente ✅" : "NO fue eliminado ❌"}\`);
       
       res.json({
         ...result,
@@ -505,51 +504,52 @@ const startServer = async () => {
       const reservas = getReservas();
       
       // HTML básico para mostrar las reservas
-      res.send(`<!DOCTYPE html>
-         <html>
-         <head>
-           <title>Administrador de Reservas</title>
-           <style>
-             body { font-family: Arial, sans-serif; margin: 20px; }
-             h1 { color: #333; }
-             table { border-collapse: collapse; width: 100%; }
-             th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-             tr:nth-child(even) { background-color: #f2f2f2; }
-             .actions { display: flex; gap: 10px; }
-             button { cursor: pointer; padding: 5px 10px; }
-           </style>
-         </head>
-         <body>
-           <h1>Administrador de Reservas</h1>
-           <p>Total de reservas: ${reservas.length}</p>
-           
-           <table>
-             <tr>
-               <th>Fecha</th>
-               <th>Hora</th>
-               <th>Email</th>
-               <th>Nombre</th>
-               <th>Servicio</th>
-               <th>Creado</th>
-             </tr>
-             ${reservas.map((r, i) => `
-               <tr>
-                 <td>${r.fecha}</td>
-                 <td>${r.hora}</td>
-                 <td>${r.email}</td>
-                 <td>${r.nombre}</td>
-                 <td>${r.servicio}</td>
-                 <td>${r.createdAt}</td>
-               </tr>
-             `).join('')}
-           </table>
-           
-           <hr />
-           <h2>Respaldo</h2>
-           <pre>${JSON.stringify(reservas, null, 2)}</pre>
-         </body>
-         </html>`
-      );
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Administrador de Reservas</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #333; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+            .actions { display: flex; gap: 10px; }
+            button { cursor: pointer; padding: 5px 10px; }
+          </style>
+        </head>
+        <body>
+          <h1>Administrador de Reservas</h1>
+          <p>Total de reservas: \${reservas.length}</p>
+          
+          <table>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Email</th>
+              <th>Nombre</th>
+              <th>Servicio</th>
+              <th>Creado</th>
+            </tr>
+            \${reservas.map((r, i) => \`
+              <tr>
+                <td>\${r.fecha}</td>
+                <td>\${r.hora}</td>
+                <td>\${r.email}</td>
+                <td>\${r.nombre}</td>
+                <td>\${r.servicio}</td>
+                <td>\${r.createdAt}</td>
+              </tr>
+            \`).join('')}
+          </table>
+          
+          <hr />
+          <h2>Respaldo</h2>
+          <pre>\${JSON.stringify(reservas, null, 2)}</pre>
+        </body>
+        </html>
+      `);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -568,7 +568,7 @@ const startServer = async () => {
     });
   });
 
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  app.listen(PORT, () => console.log(\`🚀 Server running on port \${PORT}\`));
 };
 
 startServer();
