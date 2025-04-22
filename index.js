@@ -77,7 +77,10 @@ app.get('/cors-test', (req, res) => {
       availableSlots: {
         GET: `${req.protocol}://${req.get('host')}/available-slots?date=YYYY-MM-DD`,
         POST: `${req.protocol}://${req.get('host')}/available-slots (con body: {"date": "YYYY-MM-DD"})`,
-        info: "Si no se proporciona fecha, se usará la fecha actual"
+        info: "Si no se proporciona fecha, se usará la fecha actual",
+        response: {
+          slots: ["09:00", "10:00", "11:00", "..."]  // Ejemplo del formato de respuesta actualizado
+        }
       },
       bookSlot: {
         POST: `${req.protocol}://${req.get('host')}/book-slot`,
@@ -147,7 +150,7 @@ const startServer = async () => {
     
     try {
       const slots = await getAvailableSlots(date);
-      res.json({ available: slots });
+      res.json({ slots: slots });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -158,7 +161,7 @@ const startServer = async () => {
     
     try {
       const slots = await getAvailableSlots(date);
-      res.json({ available: slots });
+      res.json({ slots: slots });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
