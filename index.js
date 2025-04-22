@@ -373,6 +373,14 @@ const startServer = async () => {
     const { date } = req.query;
     
     try {
+      // Validar que la fecha no sea en el pasado
+      const requestedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (requestedDate < today) {
+        return res.status(400).json({ error: "Fecha en el pasado no permitida" });
+      }
+      
       // Obtener los slots disponibles desde el calendar service
       const slotsFromCalendar = await getAvailableSlots(date);
       
@@ -401,6 +409,14 @@ const startServer = async () => {
     const { date } = req.body;
     
     try {
+      // Validar que la fecha no sea en el pasado
+      const requestedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (requestedDate < today) {
+        return res.status(400).json({ error: "Fecha en el pasado no permitida" });
+      }
+      
       // Obtener los slots disponibles desde el calendar service
       const slotsFromCalendar = await getAvailableSlots(date);
       
