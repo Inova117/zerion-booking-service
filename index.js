@@ -377,8 +377,18 @@ const startServer = async () => {
       const requestedDate = new Date(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      
+      // Validar que la fecha esté dentro del límite de 14 días
+      const limit = new Date();
+      limit.setDate(today.getDate() + 14);
+      limit.setHours(23, 59, 59, 999);
+      
       if (requestedDate < today) {
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
+      }
+      
+      if (requestedDate > limit) {
+        return res.status(400).json({ error: "Solo se pueden reservar citas en los próximos 14 días" });
       }
       
       // 1. Consultar los eventos de Google Calendar del día completo
@@ -472,8 +482,18 @@ const startServer = async () => {
       const requestedDate = new Date(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      
+      // Validar que la fecha esté dentro del límite de 14 días
+      const limit = new Date();
+      limit.setDate(today.getDate() + 14);
+      limit.setHours(23, 59, 59, 999);
+      
       if (requestedDate < today) {
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
+      }
+      
+      if (requestedDate > limit) {
+        return res.status(400).json({ error: "Solo se pueden reservar citas en los próximos 14 días" });
       }
       
       // 1. Consultar los eventos de Google Calendar del día completo
@@ -588,6 +608,24 @@ const startServer = async () => {
       return res.status(400).json({ 
         success: false, 
         message: "No se puede reservar en fechas pasadas."
+      });
+    }
+    
+    // SEGURIDAD: Validar que la fecha esté dentro del límite de 14 días
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const limit = new Date();
+    limit.setDate(today.getDate() + 14);
+    limit.setHours(23, 59, 59, 999);
+    
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > limit) {
+      console.error("❌ Intento de reserva fuera del límite de 14 días:", { date, limit: limit.toISOString() });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Solo se pueden reservar citas en los próximos 14 días"
       });
     }
 
