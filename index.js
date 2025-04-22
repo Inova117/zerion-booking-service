@@ -464,8 +464,20 @@ const startServer = async () => {
         });
       }
       
+      // Log antes de crear el evento en Google Calendar
+      console.log("📆 Creando evento en Google Calendar con:", {
+        date: req.body.date,
+        time: req.body.time,
+        name: req.body.name,
+        email: req.body.email,
+        service: req.body.service || 'Sin especificar'
+      });
+      
       // Realizar la reserva en el calendario de Google
       const result = await bookSlot(req.body);
+      
+      // Log después de crear el evento en Google Calendar
+      console.log("✅ Evento creado:", result);
       
       // Guardar la reserva en el archivo local
       guardarReserva(req.body);
@@ -488,7 +500,9 @@ const startServer = async () => {
         }
       });
     } catch (err) {
-      console.error("❌ Error al procesar la reserva:", err.message);
+      console.error("❌ Error al crear el evento:", err);
+      console.error("❌ Error detallado:", err.message);
+      console.error("❌ Stack trace:", err.stack);
       res.status(500).json({ error: err.message });
     }
   });
