@@ -370,10 +370,12 @@ const startServer = async () => {
 
   // Rutas para available-slots con CORS específico
   app.get('/available-slots', setSpecificCORS, async (req, res) => {
+    console.log("📥 GET /available-slots iniciado con fecha:", req.query.date);
     const { date } = req.query;
     
     try {
       // Validar que la fecha no sea en el pasado
+      console.log("🔍 Validando fecha:", date);
       const requestedDate = new Date(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -383,15 +385,24 @@ const startServer = async () => {
       limit.setDate(today.getDate() + 14);
       limit.setHours(23, 59, 59, 999);
       
+      console.log("📅 Fechas de comparación:", {
+        requestedDate: requestedDate.toISOString(),
+        today: today.toISOString(),
+        limit: limit.toISOString()
+      });
+      
       if (requestedDate < today) {
+        console.log("❌ Fecha en el pasado:", date);
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
       }
       
       if (requestedDate > limit) {
+        console.log("❌ Fecha fuera del límite de 14 días:", date);
         return res.status(400).json({ error: "Solo se pueden reservar citas en los próximos 14 días" });
       }
       
       // 1. Consultar los eventos de Google Calendar del día completo
+      console.log("🔄 Preparando consulta a Google Calendar para:", date);
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       
@@ -418,7 +429,14 @@ const startServer = async () => {
         });
       };
       
-      // Obtener eventos desde Google Calendar
+      // Llamar a Google Calendar API
+      console.log("📞 Llamando a Google Calendar API con parámetros:", {
+        calendarId: CALENDAR_ID,
+        timeMin: startOfDay.toISOString(),
+        timeMax: endOfDay.toISOString(),
+        timeZone: 'America/Guayaquil'
+      });
+      
       const calendarEvents = await calendar.events.list({
         calendarId: CALENDAR_ID,
         timeMin: startOfDay.toISOString(),
@@ -428,11 +446,15 @@ const startServer = async () => {
         orderBy: 'startTime'
       });
       
+      console.log("✅ Respuesta de Google Calendar recibida con", calendarEvents.data.items.length, "eventos");
+      
       // 2. Convertir eventos de Google a un formato estándar
       const busyTimes = calendarEvents.data.items.map(event => ({
         start: event.start.dateTime || `${date}T${event.start.date}T00:00:00`,
         end: event.end.dateTime || `${date}T${event.end.date}T23:59:59`
       }));
+      
+      console.log("📋 Eventos ocupados procesados:", busyTimes.length);
       
       // 3. Generar todos los slots posibles del día
       const allSlots = [];
@@ -459,8 +481,10 @@ const startServer = async () => {
       // 5. Filtrar los slots ocupados
       const availableSlots = allSlots.filter(slot => !isSlotTaken(slot.date, slot.time));
       
+      console.log("🎯 Total de slots disponibles encontrados:", availableSlots.length);
+      
       // 6. Devolver los slots disponibles
-      res.json({
+      return res.json({
         available: availableSlots,
         slots: availableSlots,
         data: availableSlots,
@@ -468,17 +492,50 @@ const startServer = async () => {
         timestamp: new Date().toISOString(),
         date: date
       });
+      
     } catch (err) {
-      console.error("Error al obtener slots disponibles:", err);
-      res.status(500).json({ error: err.message });
+      console.error("❌ ERROR en /available-slots:", err);
+      console.error("❌ Detalles del error:", err.message);
+      console.error("❌ Stack trace:", err.stack);
+      
+      // Manejar errores específicos
+      if (err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT') {
+        return res.status(503).json({ 
+          error: "Error de conexión con Google Calendar", 
+          message: "Problema temporal de conexión, intente nuevamente en unos momentos" 
+        });
+      }
+      
+      if (err.code === 'INVALID_ARGUMENT' || err.code === 400) {
+        return res.status(400).json({ 
+          error: "Parámetros inválidos", 
+          message: "La fecha proporcionada no tiene un formato válido" 
+        });
+      }
+      
+      // Si es un error en la credencial de Google
+      if (err.message && err.message.includes('invalid_grant')) {
+        console.error("❌ Error de credenciales de Google:", err.message);
+        return res.status(500).json({ 
+          error: "Error de autenticación", 
+          message: "Problema con las credenciales de Google Calendar"
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: "Error al obtener horarios disponibles", 
+        message: "Hubo un problema al procesar su solicitud" 
+      });
     }
   });
 
   app.post('/available-slots', setSpecificCORS, async (req, res) => {
+    console.log("📥 POST /available-slots iniciado con fecha:", req.body.date);
     const { date } = req.body;
     
     try {
       // Validar que la fecha no sea en el pasado
+      console.log("🔍 Validando fecha:", date);
       const requestedDate = new Date(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -488,15 +545,24 @@ const startServer = async () => {
       limit.setDate(today.getDate() + 14);
       limit.setHours(23, 59, 59, 999);
       
+      console.log("📅 Fechas de comparación:", {
+        requestedDate: requestedDate.toISOString(),
+        today: today.toISOString(),
+        limit: limit.toISOString()
+      });
+      
       if (requestedDate < today) {
+        console.log("❌ Fecha en el pasado:", date);
         return res.status(400).json({ error: "Fecha en el pasado no permitida" });
       }
       
       if (requestedDate > limit) {
+        console.log("❌ Fecha fuera del límite de 14 días:", date);
         return res.status(400).json({ error: "Solo se pueden reservar citas en los próximos 14 días" });
       }
       
       // 1. Consultar los eventos de Google Calendar del día completo
+      console.log("🔄 Preparando consulta a Google Calendar para:", date);
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       
@@ -523,7 +589,14 @@ const startServer = async () => {
         });
       };
       
-      // Obtener eventos desde Google Calendar
+      // Llamar a Google Calendar API
+      console.log("📞 Llamando a Google Calendar API con parámetros:", {
+        calendarId: CALENDAR_ID,
+        timeMin: startOfDay.toISOString(),
+        timeMax: endOfDay.toISOString(),
+        timeZone: 'America/Guayaquil'
+      });
+      
       const calendarEvents = await calendar.events.list({
         calendarId: CALENDAR_ID,
         timeMin: startOfDay.toISOString(),
@@ -533,11 +606,15 @@ const startServer = async () => {
         orderBy: 'startTime'
       });
       
+      console.log("✅ Respuesta de Google Calendar recibida con", calendarEvents.data.items.length, "eventos");
+      
       // 2. Convertir eventos de Google a un formato estándar
       const busyTimes = calendarEvents.data.items.map(event => ({
         start: event.start.dateTime || `${date}T${event.start.date}T00:00:00`,
         end: event.end.dateTime || `${date}T${event.end.date}T23:59:59`
       }));
+      
+      console.log("📋 Eventos ocupados procesados:", busyTimes.length);
       
       // 3. Generar todos los slots posibles del día
       const allSlots = [];
@@ -564,8 +641,10 @@ const startServer = async () => {
       // 5. Filtrar los slots ocupados
       const availableSlots = allSlots.filter(slot => !isSlotTaken(slot.date, slot.time));
       
+      console.log("🎯 Total de slots disponibles encontrados:", availableSlots.length);
+      
       // 6. Devolver los slots disponibles
-      res.json({
+      return res.json({
         available: availableSlots,
         slots: availableSlots,
         data: availableSlots,
@@ -573,9 +652,40 @@ const startServer = async () => {
         timestamp: new Date().toISOString(),
         date: date
       });
+      
     } catch (err) {
-      console.error("Error al obtener slots disponibles:", err);
-      res.status(500).json({ error: err.message });
+      console.error("❌ ERROR en POST /available-slots:", err);
+      console.error("❌ Detalles del error:", err.message);
+      console.error("❌ Stack trace:", err.stack);
+      
+      // Manejar errores específicos
+      if (err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT') {
+        return res.status(503).json({ 
+          error: "Error de conexión con Google Calendar", 
+          message: "Problema temporal de conexión, intente nuevamente en unos momentos" 
+        });
+      }
+      
+      if (err.code === 'INVALID_ARGUMENT' || err.code === 400) {
+        return res.status(400).json({ 
+          error: "Parámetros inválidos", 
+          message: "La fecha proporcionada no tiene un formato válido" 
+        });
+      }
+      
+      // Si es un error en la credencial de Google
+      if (err.message && err.message.includes('invalid_grant')) {
+        console.error("❌ Error de credenciales de Google:", err.message);
+        return res.status(500).json({ 
+          error: "Error de autenticación", 
+          message: "Problema con las credenciales de Google Calendar"
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: "Error al obtener horarios disponibles", 
+        message: "Hubo un problema al procesar su solicitud" 
+      });
     }
   });
 
@@ -739,6 +849,59 @@ const startServer = async () => {
     const formatted = today.toISOString().split("T")[0]; // YYYY-MM-DD
     console.log(`📆 Solicitud de fecha actual, respondiendo: ${formatted}`);
     res.json({ today: formatted });
+  });
+
+  // Endpoint de fallback para fechas disponibles en caso de error
+  app.get('/available-slots-fallback', setSpecificCORS, (req, res) => {
+    const { date } = req.query;
+    console.log("📥 Solicitud de fallback para fecha:", date);
+    
+    // Generar una lista predeterminada de horarios para emergencias
+    const fallbackSlots = [];
+    for (let hour = WORK_START; hour < WORK_END; hour++) {
+      fallbackSlots.push({
+        date,
+        time: `${hour.toString().padStart(2, '0')}:00`,
+        value: `${date}T${hour.toString().padStart(2, '0')}:00`,
+        label: `${hour.toString().padStart(2, '0')}:00`
+      });
+    }
+    
+    console.log("⚠️ Devolviendo slots de fallback:", fallbackSlots.length);
+    
+    res.json({
+      available: fallbackSlots,
+      slots: fallbackSlots,
+      data: fallbackSlots,
+      apiVersion: '1.2-fallback',
+      timestamp: new Date().toISOString(),
+      date: date,
+      fallback: true,
+      message: "Horarios predeterminados (pueden no estar disponibles)"
+    });
+  });
+
+  // Endpoint para verificar el estado del servidor de reservas
+  app.get('/health', (req, res) => {
+    try {
+      // Verificar que podemos leer las reservas
+      const reservas = getReservas();
+      
+      // Devolver estado saludable
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        reservasCount: reservas.length,
+        message: 'El servidor de reservas está funcionando correctamente'
+      });
+    } catch (err) {
+      console.error("❌ Error en health check:", err);
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: err.message
+      });
+    }
   });
 
   app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
