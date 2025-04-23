@@ -70,29 +70,49 @@ export async function getAvailableSlots(dateStr) {
 }
 
 export async function bookSlot({ name, email, date, time, service }) {
+  // La zona horaria específica que queremos usar
   const timezone = 'America/Guayaquil';
-  const startDateTime = new Date(`${date}T${time}:00`);
-  const endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000); // evento de 30 minutos
-
+  
+  console.log(`📅 bookSlot recibió: fecha=${date}, hora=${time}, nombre=${name}, email=${email}`);
+  
+  // Construir objetos de fecha como strings con formato ISO para evitar conversiones automáticas
+  const startTimeISO = `${date}T${time}:00`;
+  const [hours, minutes] = time.split(':').map(Number);
+  
+  // Calculamos la hora de fin (30 minutos después) manteniendo el formato de hora
+  const endHours = hours + Math.floor((minutes + 30) / 60);
+  const endMinutes = (minutes + 30) % 60;
+  const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+  const endTimeISO = `${date}T${endTime}:00`;
+  
+  console.log(`⏰ Horarios calculados: inicio=${startTimeISO}, fin=${endTimeISO}`);
+  
+  // Crear el evento explícitamente con la hora exacta solicitada
   const event = {
     summary: `Reserva de ${name}`,
     description: `Servicio solicitado: ${service || "No especificado"}`,
     start: {
-      dateTime: startDateTime.toISOString(),
+      dateTime: startTimeISO,
       timeZone: timezone,
     },
     end: {
-      dateTime: endDateTime.toISOString(),
+      dateTime: endTimeISO,
       timeZone: timezone,
     },
     attendees: [{ email }]
   };
-
+  
+  console.log(`📤 Enviando evento a Google Calendar:`, JSON.stringify(event, null, 2));
+  
+  // Enviar a Google Calendar
   const response = await calendar.events.insert({
     calendarId: CALENDAR_ID,
     resource: event
   });
+  
+  console.log(`✅ Respuesta de Google Calendar:`, response.data.htmlLink);
 
+  // Registrar en Google Sheets
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range: 'A1',
@@ -108,16 +128,12 @@ export async function bookSlot({ name, email, date, time, service }) {
         dayjs().format('YYYY-MM-DD HH:mm'),
         'Agendado',
         date,
-        '', '', '', '',
+        time, // Agregamos la hora explícitamente
+        '', '', '',
         `Solicitó: ${service || "No especificado"}`
       ]]
     }
   });
-
-  console.log("✅ Evento creado con éxito:");
-  console.log("- Fecha y hora inicio:", startDateTime.toISOString());
-  console.log("- Fecha y hora fin:", endDateTime.toISOString());
-  console.log("- Zona horaria:", timezone);
 
   return {
     status: 'confirmed',

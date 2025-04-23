@@ -96,7 +96,7 @@ app.use((req, res, next) => {
   // Esto es útil para entornos de desarrollo y diagnóstico
   res.setHeader("Access-Control-Allow-Origin", origin || '*');
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control, Cache-Control");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   
   // Permitir respuesta inmediata para preflight
@@ -327,7 +327,7 @@ app.all('/available-slots', (req, res, next) => {
   const origin = req.headers.origin;
   res.header('Access-Control-Allow-Origin', origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control');
   res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -336,18 +336,27 @@ app.all('/available-slots', (req, res, next) => {
   
   // Si no hay parámetro date, usar la fecha actual
   if ((req.method === 'GET' && !req.query.date)) {
-    console.log('Petición GET sin fecha: usando la fecha actual como valor predeterminado');
+    console.log('⚠️ Petición GET sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
     const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     req.query.date = formattedDate;
+    console.log(`📅 Fecha asignada: ${formattedDate}`);
   } else if ((req.method === 'POST' && (!req.body || !req.body.date))) {
-    console.log('Petición POST sin fecha: usando la fecha actual como valor predeterminado');
+    console.log('⚠️ Petición POST sin fecha: usando la fecha actual como valor predeterminado');
     // Formatear la fecha actual como YYYY-MM-DD
     const today = new Date();
     const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     if (!req.body) req.body = {};
     req.body.date = formattedDate;
+    console.log(`📅 Fecha asignada: ${formattedDate}`);
+  }
+  
+  // Registro adicional para debuggear
+  if (req.method === 'GET') {
+    console.log(`📥 GET /available-slots recibido con fecha: ${req.query.date}`);
+  } else if (req.method === 'POST') {
+    console.log(`📥 POST /available-slots recibido con fecha: ${req.body?.date}`);
   }
   
   // Continuar con las rutas específicas
@@ -377,6 +386,16 @@ const startServer = async () => {
       // Validar que la fecha no sea en el pasado
       console.log("🔍 Validando fecha:", date);
       const requestedDate = new Date(date);
+      
+      // Verificar si es una fecha válida
+      if (isNaN(requestedDate.getTime())) {
+        console.log("❌ Fecha inválida:", date);
+        return res.status(400).json({ 
+          error: "Formato de fecha inválido", 
+          message: "Por favor use el formato YYYY-MM-DD" 
+        });
+      }
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -393,138 +412,70 @@ const startServer = async () => {
       
       if (requestedDate < today) {
         console.log("❌ Fecha en el pasado:", date);
-        return res.status(400).json({ error: "Fecha en el pasado no permitida" });
+        return res.status(400).json({ 
+          error: "Fecha en el pasado no permitida", 
+          message: "Solo se permiten fechas desde hoy" 
+        });
       }
       
       if (requestedDate > limit) {
         console.log("❌ Fecha fuera del límite de 14 días:", date);
-        return res.status(400).json({ error: "Solo se pueden reservar citas en los próximos 14 días" });
-      }
-      
-      // 1. Consultar los eventos de Google Calendar del día completo
-      console.log("🔄 Preparando consulta a Google Calendar para:", date);
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      
-      // Función auxiliar para verificar si un horario está ocupado
-      const isSlotTaken = (checkDate, checkTime) => {
-        // Verificar en las reservas locales
-        const reservasOcupadas = getReservas().filter(r => 
-          r.fecha === checkDate && r.hora === checkTime
-        );
-        
-        if (reservasOcupadas.length > 0) {
-          return true;
-        }
-        
-        // Verificar en los eventos del calendario
-        const timeToCheck = new Date(`${checkDate}T${checkTime}`);
-        return busyTimes.some(busy => {
-          const busyStart = new Date(busy.start);
-          const busyEnd = new Date(busy.end);
-          return timeToCheck >= busyStart && timeToCheck < busyEnd;
+        return res.status(400).json({ 
+          error: "Fecha fuera del límite permitido", 
+          message: "Solo se permiten reservas hasta 14 días en el futuro" 
         });
-      };
-      
-      // Llamar a Google Calendar API
-      console.log("📞 Llamando a Google Calendar API con parámetros:", {
-        calendarId: CALENDAR_ID,
-        timeMin: startOfDay.toISOString(),
-        timeMax: endOfDay.toISOString(),
-        timeZone: 'America/Guayaquil'
-      });
-      
-      const calendarEvents = await calendar.events.list({
-        calendarId: CALENDAR_ID,
-        timeMin: startOfDay.toISOString(),
-        timeMax: endOfDay.toISOString(),
-        timeZone: 'America/Guayaquil',
-        singleEvents: true,
-        orderBy: 'startTime'
-      });
-      
-      console.log("✅ Respuesta de Google Calendar recibida con", calendarEvents.data.items.length, "eventos");
-      
-      // 2. Convertir eventos de Google a un formato estándar
-      const busyTimes = calendarEvents.data.items.map(event => ({
-        start: event.start.dateTime || `${date}T${event.start.date}T00:00:00`,
-        end: event.end.dateTime || `${date}T${event.end.date}T23:59:59`
-      }));
-      
-      console.log("📋 Eventos ocupados procesados:", busyTimes.length);
-      
-      // 3. Generar todos los slots posibles del día
-      const allSlots = [];
-      for (let hour = WORK_START; hour < WORK_END; hour++) {
-        for (let minute = 0; minute < 60; minute += SLOT_DURATION) {
-          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
-          // Verificar si es un horario pasado (para el día actual)
-          const slotDateTime = new Date(`${date}T${time}`);
-          const now = new Date();
-          
-          // Solo incluir horarios futuros o del pasado si no es hoy
-          if (slotDateTime > now || requestedDate.toDateString() !== today.toDateString()) {
-            allSlots.push({
-              date,
-              time,
-              value: `${date}T${time}`,
-              label: time
-            });
-          }
-        }
       }
       
-      // 5. Filtrar los slots ocupados
-      const availableSlots = allSlots.filter(slot => !isSlotTaken(slot.date, slot.time));
+      // Obtener los slots disponibles desde el calendar service
+      const slotsFromCalendar = await getAvailableSlots(date);
       
-      console.log("🎯 Total de slots disponibles encontrados:", availableSlots.length);
+      // Filtrar los slots que ya están reservados localmente
+      const slots = filtrarHorariosDisponibles(date, slotsFromCalendar);
       
-      // 6. Devolver los slots disponibles
-      return res.json({
-        available: availableSlots,
-        slots: availableSlots,
-        data: availableSlots,
-        apiVersion: '1.2',
+      // Respuesta completa con múltiples formatos para compatibilidad
+      res.json({
+        // Versión original
+        available: slots,
+        // Nuevas versiones para compatibilidad
+        slots: slots,
+        // El array también está disponible en la raíz
+        data: slots,
+        // Información de diagnóstico
+        apiVersion: '1.1',
         timestamp: new Date().toISOString(),
         date: date
       });
-      
     } catch (err) {
-      console.error("❌ ERROR en /available-slots:", err);
-      console.error("❌ Detalles del error:", err.message);
-      console.error("❌ Stack trace:", err.stack);
+      console.error("❌ Error en GET /available-slots:", err.message, err.stack);
       
-      // Manejar errores específicos
-      if (err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT') {
+      // Asegurar que el error tenga los headers CORS adecuados
+      const origin = req.headers.origin;
+      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      // Identificar tipos específicos de errores para respuestas más descriptivas
+      if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.message.includes('network')) {
         return res.status(503).json({ 
-          error: "Error de conexión con Google Calendar", 
-          message: "Problema temporal de conexión, intente nuevamente en unos momentos" 
+          error: "Error de conectividad", 
+          message: "No se pudo conectar con el servicio de calendario",
+          details: err.message
         });
       }
       
-      if (err.code === 'INVALID_ARGUMENT' || err.code === 400) {
-        return res.status(400).json({ 
-          error: "Parámetros inválidos", 
-          message: "La fecha proporcionada no tiene un formato válido" 
+      if (err.message.includes('calendar') || err.message.includes('Calendar')) {
+        return res.status(502).json({ 
+          error: "Error del servicio de calendario", 
+          message: "Problema al consultar el calendario",
+          details: err.message
         });
       }
       
-      // Si es un error en la credencial de Google
-      if (err.message && err.message.includes('invalid_grant')) {
-        console.error("❌ Error de credenciales de Google:", err.message);
-        return res.status(500).json({ 
-          error: "Error de autenticación", 
-          message: "Problema con las credenciales de Google Calendar"
-        });
-      }
-      
-      return res.status(500).json({ 
+      res.status(500).json({ 
         error: "Error al obtener horarios disponibles", 
-        message: "Hubo un problema al procesar su solicitud" 
+        message: "Hubo un problema al procesar su solicitud",
+        details: err.message
       });
     }
   });
@@ -684,7 +635,7 @@ const startServer = async () => {
       
       return res.status(500).json({ 
         error: "Error al obtener horarios disponibles", 
-        message: "Hubo un problema al procesar su solicitud" 
+        message: "Hubo un problema al procesar su solicitud"
       });
     }
   });
