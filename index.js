@@ -96,7 +96,7 @@ app.use((req, res, next) => {
   // Esto es útil para entornos de desarrollo y diagnóstico
   res.setHeader("Access-Control-Allow-Origin", origin || '*');
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control, Cache-Control");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, cache-control, Cache-Control, pragma");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   
   // Permitir respuesta inmediata para preflight
@@ -327,7 +327,7 @@ app.all('/available-slots', (req, res, next) => {
   const origin = req.headers.origin;
   res.header('Access-Control-Allow-Origin', origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control, pragma');
   res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -372,7 +372,7 @@ const startServer = async () => {
     const origin = req.headers.origin;
     res.header('Access-Control-Allow-Origin', origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control, pragma');
     res.header('Access-Control-Allow-Credentials', 'true');
     next();
   };
@@ -452,7 +452,7 @@ const startServer = async () => {
       const origin = req.headers.origin;
       res.header('Access-Control-Allow-Origin', origin || '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, cache-control, Cache-Control, pragma');
       res.header('Access-Control-Allow-Credentials', 'true');
       
       // Identificar tipos específicos de errores para respuestas más descriptivas
