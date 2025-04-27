@@ -155,7 +155,7 @@ app.get('/format-test', (req, res) => {
     withMetadata: {
       available: slots,
       metadata: {
-        date: "2023-12-31",
+        date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,
         timezone: "UTC"
       }
     }
@@ -207,7 +207,7 @@ app.get('/frontend-debug', (req, res) => {
            // Probamos cada formato
            for (const format of formats) {
              try {
-               const response = \`\${baseUrl}/format-test?format=\${format}\`);
+               const response = await fetch(\`\${baseUrl}/format-test?format=\${format}\`);
                const data = await response.json();
                
                // Ahora intentamos procesar estos datos como lo haría el frontend
@@ -255,12 +255,16 @@ app.get('/frontend-debug', (req, res) => {
            
            // Ahora probemos la API real
            try {
-             const response = \`\${baseUrl}/available-slots?date=2023-12-31\`);
+             // Usar la fecha actual en lugar de una fecha hardcodeada
+             const today = new Date();
+             const formattedDate = \`\${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}\`;
+             const response = await fetch(\`\${baseUrl}/available-slots?date=\${formattedDate}\`);
              const data = await response.json();
              
              results.innerHTML += \`
                <div style="margin-bottom: 20px; padding: 10px; border: 2px solid #00f; background: #eef;">
                  <h3>API Real: /available-slots</h3>
+                 <p><strong>Fecha consultada:</strong> \${formattedDate}</p>
                  <p><strong>Datos:</strong></p>
                  <pre>\${JSON.stringify(data, null, 2)}</pre>
                </div>

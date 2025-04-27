@@ -53,6 +53,11 @@ if (process.argv[2] === '--test') {
     try {
       const result = await getTodayDate();
       console.log('Resultado de getTodayDate:', result);
+      
+      // Usar la fecha actual para consultar slots disponibles, no una fecha hardcodeada
+      const today = new Date();
+      const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      console.log(`📅 Obteniendo horarios disponibles para: ${formattedDate}`);
     } catch (error) {
       console.error('Error en la prueba:', error);
     }
