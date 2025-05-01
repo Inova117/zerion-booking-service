@@ -2,8 +2,13 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import { registrarLeadEnSendFox } from './services/sendfoxService.js';
 
 dotenv.config();
+
+console.log("🔐 SENDFOX_API_TOKEN cargado (últimos 6 caracteres):", process.env.SENDFOX_API_TOKEN?.slice(-6));
+
+
 
 // ✅ Restaurar los archivos si no existen
 function restoreFile(filename, encoded) {
@@ -741,6 +746,14 @@ const startServer = async () => {
       
       // Guardar la reserva en el archivo local
       guardarReserva(req.body);
+      
+      // Registrar lead en SendFox
+      try {
+        await registrarLeadEnSendFox({ name, email });
+      } catch (sendFoxError) {
+        console.error("⚠️ Error al enviar lead a SendFox:", sendFoxError.message);
+        // No interrumpimos el flujo principal si falla SendFox
+      }
       
       res.json({ 
         success: true, 
