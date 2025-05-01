@@ -400,6 +400,16 @@ const startServer = async () => {
         });
       }
       
+      // Validar que el año no sea anterior al actual
+      const thisYear = new Date().getFullYear();
+      if (requestedDate.getFullYear() < thisYear) {
+        console.log(`❌ Fecha con año incorrecto detectada: ${date} (año ${requestedDate.getFullYear()} < ${thisYear})`);
+        return res.status(400).json({
+          error: "Fecha en el pasado detectada. Requiere corrección del Assistant.",
+          message: `El año ${requestedDate.getFullYear()} es anterior al año actual ${thisYear}.`
+        });
+      }
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -492,6 +502,17 @@ const startServer = async () => {
       // Validar que la fecha no sea en el pasado
       console.log("🔍 Validando fecha:", date);
       const requestedDate = new Date(date);
+      
+      // Validar que el año no sea anterior al actual
+      const thisYear = new Date().getFullYear();
+      if (requestedDate.getFullYear() < thisYear) {
+        console.log(`❌ Fecha con año incorrecto detectada: ${date} (año ${requestedDate.getFullYear()} < ${thisYear})`);
+        return res.status(400).json({
+          error: "Fecha en el pasado detectada. Requiere corrección del Assistant.",
+          message: `El año ${requestedDate.getFullYear()} es anterior al año actual ${thisYear}.`
+        });
+      }
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -667,6 +688,17 @@ const startServer = async () => {
     // SEGURIDAD: Validar que no sea una fecha pasada
     const selectedDateTime = new Date(`${date}T${time}:00`);
     const now = new Date();
+    
+    // Validar que el año no sea anterior al actual
+    const thisYear = new Date().getFullYear();
+    if (selectedDateTime.getFullYear() < thisYear) {
+      console.log(`❌ Fecha con año incorrecto detectada: ${date} (año ${selectedDateTime.getFullYear()} < ${thisYear})`);
+      return res.status(400).json({
+        success: false,
+        error: "Fecha en el pasado detectada. Requiere corrección del Assistant.",
+        message: `El año ${selectedDateTime.getFullYear()} es anterior al año actual ${thisYear}.`
+      });
+    }
     
     if (selectedDateTime < now) {
       console.error("❌ Intento de reserva en fecha pasada:", { date, time, selectedDateTime: selectedDateTime.toISOString(), now: now.toISOString() });
