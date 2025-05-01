@@ -755,10 +755,15 @@ const startServer = async () => {
         // No interrumpimos el flujo principal si falla SendFox
       }
       
+      // Incluir la fecha y hora real de la reserva en la respuesta
       res.json({ 
         success: true, 
         status: "confirmed", 
-        event_link: result?.event_link || null 
+        event_link: result?.event_link || null,
+        // Agregar la fecha y hora real para que el asistente pueda informar correctamente
+        actual_date: date,
+        actual_time: time,
+        original_request: req.body
       });
     } catch (err) {
       console.error("❌ Error al agendar:", err);
